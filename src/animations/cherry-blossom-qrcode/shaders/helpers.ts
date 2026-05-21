@@ -17,7 +17,7 @@ struct Uniforms {
   blockCount: f32,
   progress: f32,
   gridSize: f32,
-  _pad1: f32,
+  season: f32,
   _pad2: f32,
   _pad3: f32,
 }

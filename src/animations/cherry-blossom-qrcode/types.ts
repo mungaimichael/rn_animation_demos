@@ -21,3 +21,12 @@ export enum BlockType {
   Grass = 3, // QR dark outside tree - green ground
   FallenPetals = 4, // Under canopy decoration
 }
+
+// Seasons support
+export enum Season {
+  Spring = 0,
+  Summer = 1,
+  Autumn = 2,
+  Winter = 3,
+}
+

@@ -8,12 +8,14 @@ import { LERP_SPEED, MAX_BLOCKS } from '../constants';
 import {
   blocksFragmentShader,
   blocksVertexShader,
+  particleFragmentShader,
+  particleVertexShader,
   shadowFragmentShader,
   shadowVertexShader,
   skyFragmentShader,
   skyVertexShader,
 } from '../shaders';
-import { BlockData } from '../types';
+import { BlockData, Season } from '../types';
 import { generateBlockData, generateQRMatrix } from '../utils';
 
 function easeInOutCubic(t: number): number {
@@ -26,6 +28,7 @@ interface UseWebGPUOptions {
   canvasHeight: number;
   qrContent: string;
   isFlat: React.RefObject<boolean>;
+  season: Season;
 }
 
 export function useWebGPU({
@@ -34,6 +37,7 @@ export function useWebGPU({
   canvasHeight,
   qrContent,
   isFlat,
+  season,
 }: UseWebGPUOptions) {
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -52,6 +56,8 @@ export function useWebGPU({
   });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
+  const seasonRef = useRef(season);
+  seasonRef.current = season;
 
   // Update buffers when QR content changes
   useEffect(() => {
@@ -235,6 +241,25 @@ export function useWebGPU({
       depthCompare: 'less',
     });
 
+    const particlesPipeline = createPipeline(device, format, skyBindGroupLayout, {
+      vertex: particleVertexShader,
+      fragment: particleFragmentShader,
+      depthWrite: false,
+      depthCompare: 'less',
+      blend: {
+        color: {
+          srcFactor: 'src-alpha',
+          dstFactor: 'one-minus-src-alpha',
+          operation: 'add',
+        },
+        alpha: {
+          srcFactor: 'one',
+          dstFactor: 'one-minus-src-alpha',
+          operation: 'add',
+        },
+      },
+    });
+
     const depthTexture = device.createTexture({
       size: [canvas.width, canvas.height],
       format: 'depth24plus',
@@ -268,7 +293,7 @@ export function useWebGPU({
         numBlocks,
         progressRef.current,
         gridSize,
-        0,
+        seasonRef.current,
         0,
         0,
       ]);
@@ -309,6 +334,12 @@ export function useWebGPU({
       renderPass.setPipeline(blocksPipeline);
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36 * numBlocks);
+
+      // Draw seasonal particles (192 particles, 6 vertices each)
+      renderPass.setPipeline(particlesPipeline);
+      renderPass.setBindGroup(0, skyBindGroup);
+      renderPass.draw(6 * 192);
+
 
       renderPass.end();
       device.queue.submit([commandEncoder.finish()]);
